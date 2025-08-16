@@ -1,0 +1,11 @@
+package com.task.chat.domain.entity;
+
+import jakarta.validation.constraints.NotBlank;
+
+public record ChatCreateRequest(
+	@NotBlank
+	String question,
+	@NotBlank
+	String answer
+) {
+}
