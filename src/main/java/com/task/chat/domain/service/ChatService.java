@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.task.chat.domain.entity.Chat;
 import com.task.chat.domain.entity.ChatQuestionDto;
@@ -54,6 +55,20 @@ public class ChatService {
 		chatRepository.save(chat);
 
 		return response;
+	}
+
+	@Transactional
+	public void deleteChatThread(final Long userId,final Long threadId) {
+		ChatThread thread = chatThreadRepository.findById(threadId)
+			.orElseThrow(() -> DomainExcecption.of(HttpStatus.NOT_FOUND, "존재하지 않는 채팅 스레드입니다."));
+
+		if( !thread.getUser().getId().equals(userId)) {
+			throw DomainExcecption.of(HttpStatus.FORBIDDEN, "해당 스레드는 사용자의 것이 아닙니다.");
+		}
+
+		chatRepository.deleteByChatThreadId(thread.getId());
+
+		chatThreadRepository.delete(thread);
 	}
 
 	private boolean isRecentThread(Long threadId, LocalDateTime windowStart) {
