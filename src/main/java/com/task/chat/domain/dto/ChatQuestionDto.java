@@ -1,4 +1,4 @@
-package com.task.chat.domain.entity;
+package com.task.chat.domain.dto;
 
 import java.util.List;
 
