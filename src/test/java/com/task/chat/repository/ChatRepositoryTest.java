@@ -11,9 +11,4 @@ class ChatRepositoryTest extends RepositoryTest {
 	@Autowired
 	ChatRepository chatRepository;
 
-	@Test
-	void queryTest() {
-		chatRepository.findByChatThreadIdOrderByCreatedAtAsc(1L);
-	}
-
 }

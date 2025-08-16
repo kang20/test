@@ -2,13 +2,15 @@ package com.task.chat.domain.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.task.chat.domain.entity.Chat;
-import com.task.chat.domain.entity.ChatQuestionDto;
+import com.task.chat.domain.dto.ChatQuestionDto;
 import com.task.chat.domain.entity.ChatThread;
 import com.task.chat.repository.ChatRepository;
 import com.task.chat.repository.ChatThreadRepository;
@@ -29,7 +31,7 @@ public class ChatService {
 	private final UserRepository userRepository;
 	private final ChatClient chatClient;
 
-	public String createChat(final Long userId, final String question) {
+	public String createChat(final Long userId, final String question) throws ExecutionException, InterruptedException {
 		User user = userRepository.findById(userId).orElseThrow(() -> {
 			return DomainExcecption.of(HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다.");
 		});
@@ -48,13 +50,20 @@ public class ChatService {
 				return ChatQuestionDto.Question.of(user.getRole().name(), chat.getQuestion());})
 			.toList();
 
-		String response = chatClient.sendQuestion(new ChatQuestionDto(question, historyChats)); // TODO : 일단 동기 처리 추후 비동기로 개선
+		CompletableFuture<String> future = chatClient.sendQuestion(new ChatQuestionDto(question, historyChats))
+			.thenApply(response -> {
+				var chat = Chat.create(question, response, threadToUse);
+				chatRepository.save(chat);
+				return response;
+			});// TODO : 일단 동기 처리 추후 비동기로 개선
 
-		// 요청받은 응답을 반환하고 질문과 Chat 을 DB에 저장
-		var chat = Chat.create(question, response, threadToUse);
-		chatRepository.save(chat);
+		return future.get();
+	}
 
-		return response;
+	private boolean isRecentThread(Long threadId, LocalDateTime windowStart) {
+		return chatRepository.findTopByChatThreadIdOrderByCreatedAtDesc(threadId)
+			.map(last -> !last.getCreatedAt().isBefore(windowStart)) // windowStart 이후면 true
+			.orElse(false); // 채팅이 하나도 없으면 최근으로 보지 않음
 	}
 
 	@Transactional
@@ -71,9 +80,4 @@ public class ChatService {
 		chatThreadRepository.delete(thread);
 	}
 
-	private boolean isRecentThread(Long threadId, LocalDateTime windowStart) {
-		return chatRepository.findTopByChatThreadIdOrderByCreatedAtDesc(threadId)
-			.map(last -> !last.getCreatedAt().isBefore(windowStart)) // windowStart 이후면 true
-			.orElse(false); // 채팅이 하나도 없으면 최근으로 보지 않음
-	}
 }

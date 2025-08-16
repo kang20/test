@@ -1,7 +1,9 @@
 package com.task.chat.domain.service;
 
-import com.task.chat.domain.entity.ChatQuestionDto;
+import java.util.concurrent.CompletableFuture;
+
+import com.task.chat.domain.dto.ChatQuestionDto;
 
 public interface ChatClient {
-	String sendQuestion(ChatQuestionDto question);
+	CompletableFuture<String> sendQuestion(ChatQuestionDto question);
 }
